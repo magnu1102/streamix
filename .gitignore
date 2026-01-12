@@ -9,6 +9,7 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+node_modules
 
 # testing
 /coverage
@@ -16,6 +17,8 @@
 # next.js
 /.next/
 /out/
+.next
+out
 
 # production
 /build
@@ -39,3 +42,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# env files
+.env
+.env.local
+.env.*.local
+
+# prisma
+prisma/*.db
+prisma/*.db-journal
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode
+.idea
