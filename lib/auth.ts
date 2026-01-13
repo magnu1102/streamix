@@ -31,17 +31,14 @@ export const authOptions: NextAuthOptions = {
           where: { email: credentials.email }
         });
 
-        // Check user existence
         if (!user || !user.password) {
           throw new Error("Invalid credentials");
         }
 
-        // SECURITY: Block unverified users
         if (!user.emailVerified) {
           throw new Error("Email not verified. Please register again to verify.");
         }
 
-        // Verify password
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) throw new Error("Invalid credentials");
 
@@ -55,37 +52,53 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account }) {
-      // 1. Password Login (handled in authorize above, but double check safe)
       if (account?.provider === "credentials") return true;
 
-      // 2. Magic Link Login
       if (account?.provider === "email") {
         if (!user.email) return false;
-
         const existingUser = await prisma.user.findUnique({
           where: { email: user.email },
         });
-
-        // SECURITY: User must exist AND be verified
-        if (!existingUser) {
-          return "/login?error=AccountNotFound";
-        }
-        if (!existingUser.emailVerified) {
-          // You might want a specific error for this, but AccountNotFound is safe enough
-          // or create a new error param like ?error=Unverified
-          return "/login?error=AccountNotFound"; 
-        }
+        if (!existingUser) return "/login?error=AccountNotFound";
+        if (!existingUser.emailVerified) return "/login?error=AccountNotFound"; 
       }
       return true;
     },
-    async jwt({ token, user }) {
-      if (user) token.id = user.id;
+    async jwt({ token, user, trigger, session }) {
+      // 1. Initial Sign In: Add version to token
+      if (user) {
+        token.id = user.id;
+        token.sessionVersion = user.sessionVersion;
+      }
+
+      // 2. Subsequent Requests: Verify Version from DB
+      // We check this roughly every time the JWT is decrypted/accessed (e.g. page loads)
+      if (!user && token.sub) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { sessionVersion: true },
+        });
+
+        // If user is gone or version changed, invalidate token
+        if (!dbUser || dbUser.sessionVersion !== token.sessionVersion) {
+           // Returning null/modified token forces signout behavior in the session callback
+           return { ...token, error: "RefreshAccessTokenError" }; 
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
+      // If the JWT callback marked this as invalid, return null to log out user
+      if (token.error) {
+        return { ...session, user: null as any }; // Forces logout on client
+      }
+
       if (session.user && token) {
         // @ts-ignore
         session.user.id = token.id;
+        // @ts-ignore
+        session.user.sessionVersion = token.sessionVersion;
       }
       return session;
     }
