@@ -8,7 +8,7 @@ export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
-  const errorParam = searchParams.get("error"); // <--- Get error from URL
+  const errorParam = searchParams.get("error");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +20,7 @@ export default function LoginForm() {
   const getErrorMessage = () => {
     if (error) return error; // State error (from form submission)
     if (errorParam === "AccountNotFound") {
-      return "No account found. Please sign up first.";
+      return "Account not found";
     }
     if (errorParam === "AccessDenied") {
       return "Access denied. Please check your email.";
@@ -60,6 +60,9 @@ export default function LoginForm() {
 
         if (res?.error) {
           setError("Failed to send login link");
+        } else if (res?.url && res.url.includes("error=AccountNotFound")) {
+          // Manually catch the redirect URL error param
+          setError("Account not found");
         } else {
           setError("Check your email for the login link!");
         }
@@ -83,7 +86,7 @@ export default function LoginForm() {
         </div>
       )}
 
-      {/* Updated Error Display using activeError */}
+      {/* Updated Error Display */}
       {activeError && (
         <div className={`mb-4 p-3 rounded text-sm text-center border ${
           activeError.includes("Check") 

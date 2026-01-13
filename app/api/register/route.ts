@@ -16,11 +16,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
 
-    // 2. Validate Password Strength (Min 8 chars, 1 number)
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    // 2. Validate Password Strength
+    // At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 symbol
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+    
     if (!passwordRegex.test(password)) {
       return NextResponse.json(
-        { error: "Password must be at least 8 characters and include a number" },
+        { error: "Password must be at least 8 chars, with 1 uppercase, 1 lowercase, 1 number, and 1 symbol." },
         { status: 400 }
       );
     }
