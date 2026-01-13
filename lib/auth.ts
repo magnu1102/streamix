@@ -31,17 +31,19 @@ export const authOptions: NextAuthOptions = {
           where: { email: credentials.email }
         });
 
-        // Check if user exists and has a password
+        // Check user existence
         if (!user || !user.password) {
           throw new Error("Invalid credentials");
         }
 
+        // SECURITY: Block unverified users
+        if (!user.emailVerified) {
+          throw new Error("Email not verified. Please register again to verify.");
+        }
+
         // Verify password
         const isValid = await bcrypt.compare(credentials.password, user.password);
-
-        if (!isValid) {
-          throw new Error("Invalid credentials");
-        }
+        if (!isValid) throw new Error("Invalid credentials");
 
         return user;
       }
@@ -53,33 +55,31 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account }) {
-      // 1. Allow Password login to flow (it checks password itself)
-      if (account?.provider === "credentials") {
-        return true;
-      }
+      // 1. Password Login (handled in authorize above, but double check safe)
+      if (account?.provider === "credentials") return true;
 
-      // 2. Restrict Magic Link (Email Provider)
+      // 2. Magic Link Login
       if (account?.provider === "email") {
         if (!user.email) return false;
 
-        // Check if user actually exists in the DB
         const existingUser = await prisma.user.findUnique({
           where: { email: user.email },
         });
 
-        // If not found, reject login and redirect to error message
+        // SECURITY: User must exist AND be verified
         if (!existingUser) {
           return "/login?error=AccountNotFound";
         }
+        if (!existingUser.emailVerified) {
+          // You might want a specific error for this, but AccountNotFound is safe enough
+          // or create a new error param like ?error=Unverified
+          return "/login?error=AccountNotFound"; 
+        }
       }
-      
       return true;
     },
-    // We need to persist the user ID in the JWT and Session manually when using JWT strategy
     async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
+      if (user) token.id = user.id;
       return token;
     },
     async session({ session, token }) {

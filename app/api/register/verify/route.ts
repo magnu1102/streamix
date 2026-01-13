@@ -1,7 +1,9 @@
+// app/api/register/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { sendVerificationEmail } from "@/lib/email";
+import { checkRateLimit, incrementRateLimit } from "@/lib/ratelimit";
 
 export async function POST(req: Request) {
   try {
@@ -26,7 +28,13 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Check for existing user & Safeguard against spam
+    // 3. Check 24h Rate Limit
+    const rateLimit = await checkRateLimit(email);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: rateLimit.error }, { status: 429 });
+    }
+
+    // 4. Check for existing user & 2-Minute Safeguard
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
@@ -36,13 +44,13 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "User already exists" }, { status: 409 });
       }
 
-      // SAFEGUARD: Check if a fresh token already exists
+      // SAFEGUARD: Check if a fresh token already exists (prevents "Back -> Create" spam)
       const activeToken = await prisma.verificationToken.findFirst({
         where: { identifier: email },
       });
 
       if (activeToken) {
-        // Token logic: Created = Expires - 15m. 
+        // Token Logic: Created = Expires - 15m. 
         // Cooldown ends = Created + 2m = (Expires - 15m) + 2m = Expires - 13m
         const cooldownEnds = new Date(activeToken.expires.getTime() - 13 * 60 * 1000);
         
@@ -56,12 +64,12 @@ export async function POST(req: Request) {
       }
     }
 
-    // 4. Generate OTP & Hash
+    // 5. Generate OTP & Hash
     const token = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedPassword = await bcrypt.hash(password, 10);
     const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-    // 5. Database Transaction
+    // 6. DB Transaction
     await prisma.$transaction(async (tx) => {
       if (existingUser) {
         await tx.user.update({
@@ -89,7 +97,8 @@ export async function POST(req: Request) {
       });
     });
 
-    // 6. Send Email
+    // 7. Increment Counter & Send Email
+    await incrementRateLimit(email);
     await sendVerificationEmail(email, token);
 
     return NextResponse.json({ message: "Verification code sent" }, { status: 200 });
