@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -12,19 +13,14 @@ export default function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isPasswordLogin, setIsPasswordLogin] = useState(false); // Toggle state
+  const [isPasswordLogin, setIsPasswordLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Helper to determine which error message to show
   const getErrorMessage = () => {
-    if (error) return error; // State error (from form submission)
-    if (errorParam === "AccountNotFound") {
-      return "Account not found";
-    }
-    if (errorParam === "AccessDenied") {
-      return "Access denied. Please check your email.";
-    }
+    if (error) return error;
+    if (errorParam === "AccountNotFound") return "Account not found";
+    if (errorParam === "AccessDenied") return "Access denied. Please check your email.";
     return null;
   };
 
@@ -37,7 +33,6 @@ export default function LoginForm() {
 
     try {
       if (isPasswordLogin) {
-        // Password Login Flow
         const res = await signIn("credentials", {
           email,
           password,
@@ -47,21 +42,19 @@ export default function LoginForm() {
         if (res?.error) {
           setError("Invalid email or password");
         } else {
-          router.push("/");
+          router.push("/watch"); // Redirect to watch page on success
           router.refresh();
         }
       } else {
-        // Magic Link Flow
         const res = await signIn("email", {
           email,
           redirect: false,
-          callbackUrl: "/",
+          callbackUrl: "/watch",
         });
 
         if (res?.error) {
           setError("Failed to send login link");
         } else if (res?.url && res.url.includes("error=AccountNotFound")) {
-          // Manually catch the redirect URL error param
           setError("Account not found");
         } else {
           setError("Check your email for the login link!");
@@ -86,7 +79,6 @@ export default function LoginForm() {
         </div>
       )}
 
-      {/* Updated Error Display */}
       {activeError && (
         <div className={`mb-4 p-3 rounded text-sm text-center border ${
           activeError.includes("Check") 
@@ -146,9 +138,9 @@ export default function LoginForm() {
         
         <p>
           Don't have an account?{" "}
-          <a href="/register" className="text-blue-400 hover:underline">
+          <Link href="/register" className="text-blue-400 hover:underline">
             Sign Up
-          </a>
+          </Link>
         </p>
       </div>
     </div>
