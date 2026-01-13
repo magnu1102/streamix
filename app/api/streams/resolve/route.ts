@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { resolveStream } from "@/lib/streams/service";
+import { resolveStream } from "@/lib/streams";
 
 // Rate limiting disabled for MVP dev mode to prevent React Strict Mode issues
 // const rateLimit = new Map<string, number>();
