@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+  secret: process.env.NEXTAUTH_SECRET, // <--- added for error:unauthorized
   providers: [
     EmailProvider({
       server: process.env.EMAIL_SERVER,
