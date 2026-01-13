@@ -13,7 +13,10 @@ export default function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isPasswordLogin, setIsPasswordLogin] = useState(false);
+  
+  // CHANGE 1: Set default to true (Password Login first)
+  const [isPasswordLogin, setIsPasswordLogin] = useState(true); 
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -42,14 +45,14 @@ export default function LoginForm() {
         if (res?.error) {
           setError("Invalid email or password");
         } else {
-          router.push("/watch"); // Redirect to watch page on success
+          router.push("/"); 
           router.refresh();
         }
       } else {
         const res = await signIn("email", {
           email,
           redirect: false,
-          callbackUrl: "/watch",
+          callbackUrl: "/",
         });
 
         if (res?.error) {
@@ -133,7 +136,7 @@ export default function LoginForm() {
           }}
           className="text-blue-400 hover:underline"
         >
-          {isPasswordLogin ? "Use Magic Link instead" : "Use Password instead"}
+          {isPasswordLogin ? "Use Magic Link Instead" : "Use Password Instead"}
         </button>
         
         <p>
