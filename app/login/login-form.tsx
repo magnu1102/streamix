@@ -8,12 +8,27 @@ export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
+  const errorParam = searchParams.get("error"); // <--- Get error from URL
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isPasswordLogin, setIsPasswordLogin] = useState(false); // Toggle state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Helper to determine which error message to show
+  const getErrorMessage = () => {
+    if (error) return error; // State error (from form submission)
+    if (errorParam === "AccountNotFound") {
+      return "No account found. Please sign up first.";
+    }
+    if (errorParam === "AccessDenied") {
+      return "Access denied. Please check your email.";
+    }
+    return null;
+  };
+
+  const activeError = getErrorMessage();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,13 +83,14 @@ export default function LoginForm() {
         </div>
       )}
 
-      {error && (
+      {/* Updated Error Display using activeError */}
+      {activeError && (
         <div className={`mb-4 p-3 rounded text-sm text-center border ${
-          error.includes("Check") 
+          activeError.includes("Check") 
             ? "bg-blue-500/20 text-blue-200 border-blue-500" 
             : "bg-red-500/20 text-red-200 border-red-500"
         }`}>
-          {error}
+          {activeError}
         </div>
       )}
 
