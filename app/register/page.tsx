@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -11,7 +11,19 @@ export default function RegisterPage() {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Resend Timer State
+  const [timeLeft, setTimeLeft] = useState(0); 
+
   const router = useRouter();
+
+  // Timer Countdown Logic
+  useEffect(() => {
+    if (timeLeft > 0) {
+      const timerId = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      return () => clearTimeout(timerId);
+    }
+  }, [timeLeft]);
 
   const handleInit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +39,7 @@ export default function RegisterPage() {
     setIsLoading(false);
     if (res.ok) {
       setStep("verify");
+      setTimeLeft(120); // Start 2 minute cooldown on success
     } else {
       const data = await res.json();
       setError(data.error || "Registration failed");
@@ -51,6 +64,38 @@ export default function RegisterPage() {
       const data = await res.json();
       setError(data.error || "Verification failed");
     }
+  };
+
+  const handleResend = async () => {
+    if (timeLeft > 0) return;
+    
+    setIsLoading(true);
+    setError("");
+    
+    const res = await fetch("/api/register/resend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    
+    setIsLoading(false);
+    
+    if (res.ok) {
+      setTimeLeft(120); // Reset timer
+      alert("Code resent!");
+    } else {
+      const data = await res.json();
+      setError(data.error || "Failed to resend");
+      // If backend says wait, sync timer (optional, but good UX)
+      if (res.status === 429) setTimeLeft(120); 
+    }
+  };
+
+  // Helper to format MM:SS
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
   return (
@@ -121,13 +166,25 @@ export default function RegisterPage() {
             >
               {isLoading ? "Verifying..." : "Verify & Create"}
             </button>
-            <button
-              type="button"
-              onClick={() => setStep("form")}
-              className="w-full text-sm text-gray-400 hover:text-white mt-2"
-            >
-              Back
-            </button>
+            
+            <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-700">
+               <button
+                type="button"
+                onClick={() => setStep("form")}
+                className="text-sm text-gray-400 hover:text-white"
+              >
+                Back
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={timeLeft > 0 || isLoading}
+                className="text-sm text-blue-400 hover:text-blue-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+              >
+                {timeLeft > 0 ? `Resend in ${formatTime(timeLeft)}` : "Resend Code"}
+              </button>
+            </div>
           </form>
         )}
         

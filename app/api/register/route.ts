@@ -26,31 +26,47 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Check for existing user
+    // 3. Check for existing user & Safeguard against spam
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
     if (existingUser) {
-      // SECURITY: If user exists AND is verified, block them.
       if (existingUser.emailVerified) {
         return NextResponse.json({ error: "User already exists" }, { status: 409 });
       }
-      // If unverified, we allow "re-registering" (Squatting protection)
+
+      // SAFEGUARD: Check if a fresh token already exists
+      const activeToken = await prisma.verificationToken.findFirst({
+        where: { identifier: email },
+      });
+
+      if (activeToken) {
+        // Token logic: Created = Expires - 15m. 
+        // Cooldown ends = Created + 2m = (Expires - 15m) + 2m = Expires - 13m
+        const cooldownEnds = new Date(activeToken.expires.getTime() - 13 * 60 * 1000);
+        
+        if (new Date() < cooldownEnds) {
+          const waitSeconds = Math.ceil((cooldownEnds.getTime() - Date.now()) / 1000);
+          return NextResponse.json(
+            { error: `Please wait ${waitSeconds}s before retrying.` },
+            { status: 429 } 
+          );
+        }
+      }
     }
 
-    // 4. Generate OTP (6 digits) and Hash Password
+    // 4. Generate OTP & Hash
     const token = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedPassword = await bcrypt.hash(password, 10);
     const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-    // 5. Database Operations (Transaction)
+    // 5. Database Transaction
     await prisma.$transaction(async (tx) => {
-      // Create or Update User (Unverified)
       if (existingUser) {
         await tx.user.update({
           where: { email },
-          data: { password: hashedPassword }, // Update password to new one
+          data: { password: hashedPassword },
         });
       } else {
         await tx.user.create({
@@ -79,7 +95,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Verification code sent" }, { status: 200 });
 
   } catch (error) {
-    console.error("Registration init error:", error);
+    console.error("Registration error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
