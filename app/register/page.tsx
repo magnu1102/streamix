@@ -1,3 +1,4 @@
+// app/register/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -86,7 +87,7 @@ export default function RegisterPage() {
     } else {
       const data = await res.json();
       setError(data.error || "Failed to resend");
-      // If backend says wait, sync timer (optional, but good UX)
+      // If backend says wait, sync timer
       if (res.status === 429) setTimeLeft(120); 
     }
   };
