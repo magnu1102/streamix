@@ -53,3 +53,20 @@ model VerificationToken {
 
   @@unique([identifier, token])
 }
+
+
+model Stream {
+  id             String   @id @default(cuid())
+  name           String
+  token          String   @unique // The user-facing link/ID
+  isActive       Boolean  @default(true)
+  
+  // Provider agnostic storage
+  providerType   String   // e.g. "EXTERNAL_HLS", "YOUTUBE_EMBED"
+  providerConfig Json     // e.g. { "url": "https://..." }
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([token])
+}
