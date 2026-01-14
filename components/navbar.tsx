@@ -19,7 +19,7 @@ export default async function Navbar() {
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-6">
-            {session ? (
+            {session?.user ? (
               <>
                 <Link 
                   href="/profile" 

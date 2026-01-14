@@ -6,7 +6,7 @@ import LoginForm from "./login-form";
 export default async function LoginPage() {
   const session = await getServerSession(authOptions);
 
-  if (session) {
+  if (session?.user) {
     redirect("/"); // Redirect authenticated users to home
   }
 

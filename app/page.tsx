@@ -20,8 +20,9 @@ export default async function Home() {
             watch live matches, and never miss a highlight.
           </p>
           
-          <div className="flex items-center justify-center gap-4">
-            {session ? (
+        <div className="flex items-center justify-center gap-4">
+            {/* FIX: Check session?.user to correctly identify logged-in users */}
+            {session?.user ? (
               <Link
                 href="/watch"
                 className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-blue-500/25"
